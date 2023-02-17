@@ -1,0 +1,504 @@
+<?php
+
+include "database/jdf.php";
+include "database/pdo_connection.php";
+
+
+
+$row=0;
+$num = 1;
+$adderror="";
+$addcourse="";
+
+
+$id = $_GET['id'];
+$id_user = $_COOKIE['id'];
+//$id_user = $_SESSION['id'];
+$result = $conn->prepare("SELECT * FROM menus ORDER  BY sort ");
+$result->execute();
+$menus = $result->FetchAll(PDO::FETCH_ASSOC);
+
+$result = $conn->prepare("SELECT * FROM course WHERE id=? ");
+$result->bindValue(1, $id);
+$result->execute();
+$courses = $result->Fetch(PDO::FETCH_ASSOC);
+
+$result = $conn->prepare("SELECT * FROM episodes WHERE course=? ");
+$result->bindValue(1, $id);
+$result->execute();
+$episodes = $result->fetchAll(PDO::FETCH_ASSOC);
+
+
+
+
+if(isset($_POST['add'])){
+
+    $result=$conn->prepare(" SELECT * FROM  shopcart WHERE id_user=? AND id_course=?");
+    $result->bindValue(1,$_COOKIE['id']);
+   // $result->bindValue(1,$_SESSION['id']);
+    $result->bindValue(2,$id);
+    $result->execute();
+   
+    if($result->rowCount()>=1){
+        $adderror=true;
+    }
+    else{
+        $result=$conn->prepare("INSERT INTO shopcart SET id_user=? ,id_course=?");
+        $result->bindValue(1,$_COOKIE['id']);
+       // $result->bindValue(1,$_SESSION['id']);
+        $result->bindValue(2,$id);
+        $result->execute();
+        $addcourse=true;
+    }
+
+
+
+ 
+}
+
+if(isset($_POST['add_comment'])){
+    $comment=$_POST['comment'];
+    $replay=$_POST['replay'];
+   
+    $result=$conn->prepare("INSERT INTO comments SET sender=? ,course=?,content=? , date=?, replay=?");
+    $result->bindValue(1,$id_user);
+    $result->bindValue(2,$id);
+    $result->bindValue(3,$comment);
+    $result->bindValue(4,time());
+    $result->bindValue(5,$replay);
+    $result->execute();
+    
+ 
+   
+
+
+
+  }
+
+  $result=$conn->prepare("SELECT * FROM comments JOIN `users` ON comments.sender=users.id WHERE comments.course=? ORDER BY comments.date DESC");
+  $result->bindValue(1,$id);
+    $result->execute();
+    $comments=$result->fetchAll(PDO::FETCH_ASSOC);
+
+
+
+?>
+
+
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="styles/css/bootstrap.min.css">
+    <link rel="stylesheet" href="styles/css/style.css">
+    <!-- Css Reset -->
+    <link rel="stylesheet" href="styles/css/reset.css">
+    <!-- NavBar Style -->
+    <link rel="stylesheet" href="styles/css/nav.css">
+    <!-- Footer Style -->
+    <link rel="stylesheet" href="styles/css/footer.css">
+    <!-- Main Css -->
+    <link rel="stylesheet" href="styles/css/single.css">
+    <!-- Vazir Font -->
+    <link rel="stylesheet" href="fonts/vazir.css">
+    <!-- Fontawsome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" integrity="sha512-KfkfwYDsLkIlwQp6LFnl8zNdLGxu9YAA1QvwINks4PhcElQSvqcyVLLD9aMhXd13uQjoXtEKNosOWaZqXgel0g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- CDN toastr -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    <title>رایت کد || <?= $courses['title'] ?></title>
+</head>
+
+<body>
+    <div class="modal fade" id="modalSearchBox">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form action="#" class="position-relative">
+                    <input type="search" placeholder="جستجو ..." class="form-control searchField">
+                    <button class="searchBtn"><i class="fas fa-search fs-6"></i></button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+<?php 
+include "header.php";
+?>
+    <div class="content bg-white col-8">
+
+    </div>
+
+    <main style="margin-top: 10rem; margin-bottom: 5rem;">
+
+        <div class="me-5">
+            <!-- Stack the columns on mobile by making one full-width and the other half-width --> <center>
+                
+            <div class="row">
+                <div class="content col-md-3 ">
+
+                    <div class="teacherprofile mt-3 py-1 px-4 shadow p-3 mb-5 bg-body  rounded">
+
+                        <div class="d-flex align-items-center justify-content-between  pt-0">
+                            <img src="https://codeyad.com/assets/images/online-learning.png" style="width:70px;" alt="">
+                            <div>
+                                مدرس :
+                                <a href=""><?php if ($courses['Teacher'] == 37) echo "سید عطا صفوی"; ?></a>
+                                <a href=""><?php if ($courses['Teacher'] == 38) echo "شایان رضازاده"; ?></a>
+                                <a href=""><?php if ($courses['Teacher'] == 39) echo "حسین عنایتی"; ?></a>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="coursedescription pb-3">
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <p class="text-muted">قیمت</p>
+                                <p class="text-success fw-bold price"> تومان <?php echo $courses['price'] ?></p>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <p class="text-muted">تعداد قسمت ها</p>
+                                    <?php foreach($episodes as $episode){
+                                        $row++;
+                                     }?>
+                                       
+                                
+                                <p class="fw-bold"><?= $row ?></p>
+
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <p class="text-muted">وضعیت دوره</p>
+                                <p class="text-success fw-bold"><?php if ($courses['status'] == 0) echo " در حال برگزاری ";
+                                                                if ($courses['status'] == 1) echo " به پایان رسیده   "; ?> </p>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <p class="text-muted">سطح دوره</p>
+                                <p class=" fw-bold text-success"><?php if ($courses['level'] == 3) echo "مقدماتی تا پیشرفته";
+                                                                    if ($courses['level'] == 2) echo "  پیشرفته";
+                                                                    if ($courses['level'] == 1) echo "  مقدماتی"; ?> </p>
+                            </div>
+
+
+                               
+                                <?php if (isset($_COOKIE['phone'])) { ?>
+                                    <div class="d-flex justify-content-between align-items-center mt-3">
+                                        <form method="post">
+                   <center>   <input  class="btn btn-success add-butt login-in-dore login-in-dore-hover me-5 " type="submit" name="add" value="ثبت نام در این دوره" disabled></center>
+                                       <center><button type="button" class="btn btn-primary mt-2" id="copyButton">کپی لینک</button><br><br></center>
+                    </form>
+                                                      </div>
+                                   <?php } else { ?>
+                                    <div class="d-flex justify-content-between align-items-center mt-3">
+                                        <a href="login.php">
+                                    <button type="button" class="btn btn-danger">جهت ثبت نام در این دوره باید وارد شوید</button>
+                                    </a>
+                                    
+              </div>
+                               <?php } ?>
+
+                        </div>
+
+                    </div>
+                 
+
+                    <div class="shadow p-3 mb-5 bg-body rounded">
+                        برچسب ها :
+
+                        <hr>
+                        <div class="">
+                            <div class=""><span class="" href=""><?= $courses['tag']?></span>
+                            </div>
+                        </div>
+                    </div>
+
+  
+
+                </div>
+       
+                <div class="content col-10 col-md-8 bg-white me-6">
+                    <h1 class="title mb-4">
+                    <?php if (isset($_COOKIE['phone'])) { ?>
+                               
+                                   <?php } else { ?>
+                                    <p class="container alert alert-danger">
+              شما وارد نشدید! برای دیدن این دوره باید 
+              <a href="login.php" style="color: green;">وارد</a> 
+              شوید
+             </p> 
+                               <?php } ?>                 
+
+
+
+
+                    </h1>
+                    <h1 class="title mb-4"><?= $courses['title'] ?></h1>
+                    <div class="img w-100 bg-black">
+                        <video controls poster="uploads/<?php echo $courses['image'];?>" width="100%" height="500px">
+                            <source src="uploads/<?php echo $courses['introduction'];?>" type="video/mp4">
+                        </video>
+
+                    </div>
+                    <div class="mt-5">
+                        <p class="desc"><?= $courses['caption'] ?> </p>
+                    </div>
+
+                </div>
+               
+            </div>
+            <div class="row mt-2">
+                <div class="content col-md-3  ">
+                </div>
+
+                <div class="content col-10 col-md-8 bg-white me-6">
+                    <h4 class="title mb-4"> بخش های دوره</h4>
+                    <div class="img w-100 bg-black">
+                    </div>
+                    <?php foreach ($episodes as $episode) { ?>
+                        
+                        <div class="p-3 bg-info bg-opacity-10 border border-info rounded-end mt-2">
+                            <div class="course-unit-item p-2  align-items-center">
+                                <div>
+                                    <span class="counter"><?= $num++; ?></span>
+                                    <h3 class="episodeTitle d-inline"><?= $episode['title'] ?></h3>
+                                </div><br>
+                             
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mt-1">
+                                <a id="play-video" href="uploads/episode/<?= $episode['video']?>">
+                                    <div class="d-flex align-items-center justify-content-center cursor-pointer receive mb-1">
+                                        <i class="fas fa-download pl-1 ms-1"></i>
+                                        <p>دریافت فایل</p>
+                                    </div>
+                                </a>
+                                <a href="uploads/episode/<?php echo $episode['video'];?>">
+                                    <div class="d-flex align-items-center justify-content-center cursor-pointer play mb-1">
+                                        <i class="fas fa-play pl-1 ms-1"></i>
+                                        <p> دریافت ویدیو </p>
+                                    </div>
+                                </a>
+                                 
+                                <div class="d-flex align-items-center justify-content-center cursor-pointer askAnswer mb-1">
+                                    <p><?= $episode['time'] ?></p>
+                                </div>
+                            </div>
+                        </div>
+                    <?php } ?>
+
+                </div>
+
+
+            </div>
+           
+            <div class="row mt-2">
+                <div class="content col-md-3  ">
+                </div>
+                
+
+                <div class="content col-10 col-md-8 bg-white me-6">
+                    <h4 class="title"> ثبت نظر در  دوره</h4>
+                    <div class="img w-100 bg-black">
+                    </div>
+                   
+                        <div class="p-3  bg-opacity-10 rounded-end ">
+                            
+                             
+               <form action="" method="post">
+                <textarea
+                name="comment"
+                  id="text"
+                  class="form-control mt-2"
+                  cols="30"
+                  rows="10"
+                ></textarea>
+                <br>
+                <div class="alert alert-danger alert-replay" style="display: none;">
+                    <p> شما در حال پاسخ به کامنت فرد دیگری هستید! اگر نمیخواهید به این کامنت پاسخ دهید بر روی این پیام کلیک کنید.
+                        
+                    </p>
+                </div>
+                <br>
+                            <br>
+                            <input name="replay" value="0" type="text" id="replay" hidden>
+                            <br>
+
+                <input name="add_comment"  class="btn btn-success mt-2" type="submit" value="ثبت نظر">
+                </form>
+                        </div>
+                  
+
+                </div>
+
+
+            </div>
+            <div class="row mt-2">
+                <div class="content col-md-3  ">
+                </div>
+                
+
+                <div class="content col-10 col-md-8 bg-white me-6">
+                    <h4 class="title mb-4"> نظرات  دوره</h4>
+                   <?php foreach ($comments as $comment){ if($comment["replay"]==0){ ?>
+                   <br><br>
+                        <div class="p-3 border border-info rounded-end ">
+                          
+                            <div class="comment-body">
+                        <div class="comment-info d-flex align-items-center" style=" margin: 10px;opacity: 0.8">
+                            <span class="comment-username"
+                                style="float: right;margin-left: 10px">  <?= $comment['username']?> </span>
+                            <span class="ms-1"> | </span>
+                            <span class="comment-date"> <?php echo jdate('h:i:s Y/m/d ', $comment['date']);?>  </span>
+                            <a href="#comment" class="btn btn-primary" commentid="<?= $comment['idcomment']?>"
+                                style="font-size: 12px;margin-right: 5px;" id="replay_comment">پاسخ</a>
+                        </div>
+                        <p class="comment-text"><?= $comment['content']?></p>
+                             </div>
+                        </div>
+                  
+                        <?php foreach ($comments as $rep){ if($rep['replay']==$comment['idcomment']){ ?>
+
+                            <!--  -->
+                            <div class="p-3 border border-danger rounded-end me-5 mt-3">
+                          <div class="comment-body">
+                      <div class="comment-info d-flex align-items-center" style=" margin: 10px;opacity: 0.8">
+                          <span class="comment-username"
+                              style="float: right;margin-left: 10px">  <?= $rep['username']?> </span>
+                          <span class="ms-1"> | </span>
+                          <span class="comment-date"> <?php echo jdate('h:i:s Y/m/d ', $rep['date']);?>  </span>
+                      </div>
+                      <p class="comment-text"><?= $rep['content']?></p>
+                           </div>
+                      </div>
+                      <!--  -->
+                    <?php }}}}?>
+                </div>
+
+
+            </div>
+
+
+    </main> </center>
+
+
+    <footer class="footer">
+        <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center">
+            <p class="fw-bold text-white mb-3 mb-md-0 fs-6">تمامی حقوق برای کدیاد محفوظ می باشد &copy;</p>
+            <button type="button" id="scrollUpBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fff" class="bi bi-arrow-up-circle" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-7.5 3.5a.5.5 0 0 1-1 0V5.707L5.354 7.854a.5.5 0 1 1-.708-.708l3-3a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 5.707V11.5z" />
+                </svg>
+            </button>
+        </div>
+    </footer>
+
+
+
+    <script src="js/bootstrap.bundle.js"></script>
+    <script src="js/scrollToUp.js"></script>
+    <script src="js/darkMode.js"></script>
+    <script src="js\jquery-3.6.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+<script>
+  $(document).on("click" , "#replay_comment", function(){
+    const id=$(this).attr("commentid")
+    $("#replay").val(id)
+    $(".alert-replay").slideDown()
+
+  })
+  $(".alert-replay").click(function(){
+    $(this).slideUp()
+    $("#replay").val(0)
+  })
+</script>
+
+    <?php if($adderror){ ?>
+    <script>
+    toastr.error("این محصول در سبد خرید شما موجود است     ");
+    </script>
+<?php } ?>
+
+
+<?php if($addcourse){ ?>
+    <script>
+    toastr.success("این محصول در سبد خرید شما موجود است     ");
+    </script>
+<?php } ?>
+<script>
+  let prices = document.querySelectorAll(".price");
+  prices.forEach(price => {
+price.innerHTML =
+ price.innerHTML
+ .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  });
+
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+<script>
+  const copyButton = document.querySelector('#copyButton');
+
+  copyButton.addEventListener('click', () => {
+    const currentUrl = window.location.href;
+    const tempInput = document.createElement('input');
+    tempInput.value = currentUrl;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    document.execCommand('copy');
+    document.body.removeChild(tempInput);
+    toastr.success('لینک سایت با موفقیت کپی شد!');
+  });
+</script>
+<script>
+  if (typeof window !== "undefined") {
+    if (window.addEventListener) {
+      window.addEventListener("load", function () {
+        var currentPageUrl = window.location.href;
+        var mobilePageUrl = currentPageUrl.replace("/single.php?id=", "/indexmobile.php?id=");
+        if (/Mobi/.test(navigator.userAgent) && mobilePageUrl !== currentPageUrl) {
+          window.location.href = mobilePageUrl;
+        }
+      });
+    }
+  }
+</script>
+<script>
+$(document).ready(function() {
+  // دریافت اطلاعات مربوط به ویدیو و پلیر
+  var video = document.getElementById('my-video');
+  var playButton = document.getElementById('play-video');
+
+  // ایجاد event listener برای دکمه پخش ویدیو
+  playButton.addEventListener('click', function() {
+    // خواندن مسیر فایل ویدیو از data attribute دکمه پخش
+    var videoPath = $(this).data('video-path');
+
+    // اضافه کردن مسیر فایل ویدیو به تگ source ویدیو
+    $('video source').attr('src', videoPath);
+
+    // پخش ویدیو
+    video.load();
+    video.play();
+  });
+});
+var playButton = document.getElementById("play-video");
+playButton.addEventListener("click", function() {
+  var video = document.createElement("video");
+  video.setAttribute("controls", "true");
+  var source = document.createElement("source");
+  source.setAttribute("src", "uploads/episode/<?php echo $episode['video'];?>");
+  source.setAttribute("type", "video/mp4");
+  video.appendChild(source);
+  var videoDiv = document.getElementById("video-div");
+  videoDiv.innerHTML = "";
+  videoDiv.appendChild(video);
+});
+</script>
+</body>
+
+</html>
